@@ -1,0 +1,149 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PreferredContactMethod {
+  WHATSAPP
+  SMS
+}
+
+enum OnboardingStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageChannel {
+  WHATSAPP
+  SMS
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum InviteStatus {
+  PENDING
+  USED
+  EXPIRED
+}
+
+enum Role {
+  ADMIN
+  DOCTOR
+}
+
+model Organization {
+  id String   @id @default(cuid())
+  name String
+  organizatonLine String
+  createdAt DateTime @default(now())
+
+  admins Admin[]
+  doctors Doctor[]
+  invites Invite[]
+}
+
+model Admin {
+  id String @id @default(cuid())
+  organizationId String
+  name String
+  email String @unique
+  password String
+  createdAt DateTime @default(now())
+  role Role @default(ADMIN)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  invitedDoctors Doctor[] @relation("AdminInvitedDoctors")
+  sentInvites Invite[] @relation("AdminSentInvites")
+}
+
+model Doctor {
+  id String @id @default(cuid())
+  organizationId String
+  invitedById String
+  name String
+  email String @unique
+  slug String @unique
+  password String
+  createdAt DateTime @default(now())
+  role Role @default(DOCTOR)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  invitedBy Admin @relation("AdminInvitedDoctors", fields: [invitedById], references: [id])
+  patients Patient[]
+  messages Message[]
+  followUps FollowUp[]
+}
+
+model Patient {
+  id String @id @default(cuid())
+  doctorId String
+  name String
+  phone String
+  email String
+  preferredContactMethod PreferredContactMethod
+  onboardingStatus OnboardingStatus
+  createdAt DateTime @default(now())
+
+  doctor Doctor @relation(fields: [doctorId], references: [id])
+  messages Message[]
+  followUps FollowUp[]
+}
+
+model Message {
+  id String @id @default(cuid())
+  patientId String
+  doctorId String
+  direction MessageDirection
+  channel MessageChannel
+  content String
+  status MessageStatus
+  createdAt DateTime @default(now())
+
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctor Doctor @relation(fields: [doctorId], references: [id])
+}
+
+model FollowUp {
+  id String @id @default(cuid())
+  patientId String
+  doctorId String
+  scheduledAt DateTime
+  completedAt DateTime?
+  notes String
+  criticalFlag Boolean
+  createdAt DateTime @default(now())
+
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctor Doctor @relation(fields: [doctorId], references: [id])
+}
+
+model Invite {
+  id String @id @default(cuid())
+  organizationId String
+  invitedById String
+  doctorEmail String @unique
+  doctorName  String
+  token String @unique 
+  status InviteStatus @default(PENDING)
+  expiresAt DateTime @default(dbgenerated("(now() + interval '7 days')"))
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  invitedBy Admin @relation("AdminSentInvites", fields: [invitedById], references: [id])
+}
