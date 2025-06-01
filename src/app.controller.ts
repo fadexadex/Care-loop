@@ -1,8 +1,10 @@
+import "reflect-metadata";
 import express from "express";
 import dotenv from "dotenv";
 import { errorHandler } from "./middlewares";
 import adminRoutes from "./modules/admin/routes";
 import doctorRoutes from "./modules/doctor/routes";
+import patientRoutes from "./modules/patient/routes";
 
 dotenv.config();
 
@@ -22,10 +24,10 @@ export class Server {
     this.app.use(express.urlencoded({ extended: true }));
     this.app.use(errorHandler);
   }
-
   private setUpRoutes() {
     this.apiRouter.use("/admin", adminRoutes);
     this.apiRouter.use("/doctor", doctorRoutes);
+    this.apiRouter.use("/patient", patientRoutes);
     this.app.use("/api/v1", this.apiRouter);
     this.app.use(errorHandler);
   }

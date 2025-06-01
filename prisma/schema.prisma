@@ -13,11 +13,6 @@ enum PreferredContactMethod {
   SMS
 }
 
-enum OnboardingStatus {
-  PENDING
-  ACTIVE
-  COMPLETED
-}
 
 enum MessageDirection {
   INBOUND
@@ -91,18 +86,22 @@ model Doctor {
 }
 
 model Patient {
-  id String @id @default(cuid())
-  doctorId String
-  name String
-  phone String
-  email String
-  preferredContactMethod PreferredContactMethod
-  onboardingStatus OnboardingStatus
-  createdAt DateTime @default(now())
+  id                       String   @id @default(cuid())
+  doctorId                 String
+  name                     String
+  phone                    String
+  preferredContactMethod   PreferredContactMethod
+  createdAt                DateTime @default(now())
+  age                      Int
+  gender                   String
+  bloodType                String
+  knownConditions          String[]
+  allergies                String[]
+  medications              String[]
 
-  doctor Doctor @relation(fields: [doctorId], references: [id])
-  messages Message[]
-  followUps FollowUp[]
+  doctor                   Doctor   @relation(fields: [doctorId], references: [id])
+  messages                 Message[]
+  followUps                FollowUp[]
 }
 
 model Message {
@@ -120,18 +119,23 @@ model Message {
 }
 
 model FollowUp {
-  id String @id @default(cuid())
-  patientId String
-  doctorId String
-  scheduledAt DateTime
-  completedAt DateTime?
-  notes String
-  criticalFlag Boolean
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  patientId      String
+  doctorId       String
+  scheduledAt    DateTime
+  completedAt    DateTime?
+  visitSummary   String
+  diagnosis      String
+  prescription   String
+  doctorNotes    String
+  notes          String
+  criticalFlag   Boolean  @default(false)
+  createdAt      DateTime @default(now())
 
-  patient Patient @relation(fields: [patientId], references: [id])
-  doctor Doctor @relation(fields: [doctorId], references: [id])
+  patient        Patient  @relation(fields: [patientId], references: [id])
+  doctor         Doctor   @relation(fields: [doctorId], references: [id])
 }
+
 
 model Invite {
   id String @id @default(cuid())

@@ -1,4 +1,3 @@
-import { Prisma } from "@prisma/client";
 import { AppError } from "../../middlewares/error.handler";
 import { StatusCodes } from "http-status-codes";
 import { AdminRepository } from "./repository";
