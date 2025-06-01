@@ -28,13 +28,17 @@ class FollowUpSchedulerService {
         const { followUpId, patientId, doctorId, scheduledAt } = job.data;
 
         try {
-          const followUp = await prisma.followUp.findUnique({
+            const followUp = await prisma.followUp.findUnique({
             where: { id: followUpId },
             include: {
               patient: true,
-              doctor: true,
+              doctor: {
+              include: {
+                organization: true,
+              },
+              },
             },
-          });
+            });
 
           if (!followUp) {
             console.error(`Follow-up with ID ${followUpId} not found`);
@@ -53,7 +57,7 @@ class FollowUpSchedulerService {
   }
   private async sendFollowUpMessage(followUp: any) {
     try {
-      const { patient } = followUp;
+      const { patient, doctor: { organization } } = followUp;
       console.log(
         `Processing follow-up message for patient: ${patient.firstName} ${patient.lastName}`
       );
@@ -64,7 +68,7 @@ class FollowUpSchedulerService {
 
       const message = `Hello ${patient.firstName}! This is a scheduled follow-up message from your healthcare provider. Please contact us if you have any questions.`;
 
-      await twilioService.sendFollowUpMessage(patient.phoneNumber, message);
+      await twilioService.sendWhatsAppMessage(patient.phoneNumber, message, organization.organizationLine);
 
       console.log(
         `Successfully sent WhatsApp message to ${patient.phoneNumber}`
