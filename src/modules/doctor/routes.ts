@@ -38,6 +38,12 @@ router.get(
   doctorController.getDoctorBySlug
 );
 
+router.get(
+  "/dashboard/stats",
+  authGuard,
+  doctorController.getDoctorDashboard
+);
+
 
 
 export default router;

@@ -28,4 +28,11 @@ router.get(
   patientController.getPatientsByDoctor
 );
 
+router.get(
+  '/details/:id',
+  authGuard,
+  doctorGuard,
+  patientController.getPatientDetails
+);
+
 export default router;

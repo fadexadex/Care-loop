@@ -96,4 +96,24 @@ export class DoctorController {
       next(error);
     }
   }
+
+  async getDoctorDashboard(req: Request & { user?: any }, res: Response, next: NextFunction) {
+    try {
+      const doctorId = req.user?.id;
+      if (!doctorId) {
+        return res.status(StatusCodes.UNAUTHORIZED).json({
+          status: "error",
+          message: "Doctor authentication required"
+        });
+      }
+
+      const dashboard = await doctorService.getDoctorDashboard(doctorId);
+      res.status(StatusCodes.OK).json({
+        status: "success",
+        data: dashboard
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

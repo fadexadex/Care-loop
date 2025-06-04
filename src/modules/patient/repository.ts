@@ -75,4 +75,80 @@ export class PatientRepository {
       },
     });
   }
+
+  async getPatientDetails(patientId: string, doctorId: string) {
+    const patient = await prisma.patient.findFirst({
+      where: {
+        id: patientId,
+        doctorId, 
+      },
+      include: {
+        doctor: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        messages: {
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 50,
+        },
+        followUps: {
+          orderBy: {
+            scheduledAt: "desc",
+          },
+        },
+        _count: {
+          select: {
+            messages: true,
+            followUps: true,
+          },
+        },
+      },
+    });
+
+    if (!patient) {
+      return null;
+    }
+
+    const [recentMessages, upcomingFollowUps, completedFollowUps] = await Promise.all([
+      prisma.message.count({
+        where: {
+          patientId,
+          createdAt: {
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), 
+          },
+        },
+      }),
+      prisma.followUp.count({
+        where: {
+          patientId,
+          completedAt: null,
+          scheduledAt: {
+            gte: new Date(),
+          },
+        },
+      }),
+      prisma.followUp.count({
+        where: {
+          patientId,
+          completedAt: { not: null },
+        },
+      }),
+    ]);
+
+    return {
+      ...patient,
+      stats: {
+        totalMessages: patient._count.messages,
+        totalFollowUps: patient._count.followUps,
+        recentMessages,
+        upcomingFollowUps,
+        completedFollowUps,
+      },
+    };
+  }
 }

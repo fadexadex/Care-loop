@@ -66,4 +66,8 @@ export class DoctorService {
     }
     return doctor;
   }
+
+  async getDoctorDashboard(doctorId: string) {
+    return await doctorRepository.getDoctorDashboard(doctorId);
+  }
 }

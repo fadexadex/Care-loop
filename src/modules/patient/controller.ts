@@ -54,4 +54,34 @@ export class PatientController {
       next(error);
     }
   }
+
+  async getPatientDetails(req: Request & { user?: any }, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const doctorId = req.user?.id;
+      
+      if (!id) {
+        return res.status(StatusCodes.BAD_REQUEST).json({
+          status: "fail",
+          message: "Patient ID is required"
+        });
+      }
+
+      if (!doctorId) {
+        return res.status(StatusCodes.UNAUTHORIZED).json({
+          status: "error",
+          message: "Doctor authentication required"
+        });
+      }
+
+      const patient = await patientService.getPatientDetails(id, doctorId);
+      return res.status(StatusCodes.OK).json({
+        status: "success",
+        message: "Patient details retrieved successfully",
+        data: patient
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

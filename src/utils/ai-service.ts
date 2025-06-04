@@ -2,7 +2,8 @@ import Groq from "groq-sdk";
 import { systemPrompt } from "./system-prompt";
 
 export class AIService {
-  private groq: Groq;  constructor() {
+  private groq: Groq;
+  constructor() {
     const apiKey = process.env.GROQ_API_KEY;
 
     if (!apiKey) {
@@ -69,11 +70,14 @@ export class AIService {
     endOfConversation: boolean;
   }> {
     const prompt = `
-You will receive patient follow-up context. Respond appropriately using the system prompt rules.
+    You are assisting a patient with follow-up care. Their latest message is at the top of the list and should be treated as the most important for your reply. The older messages are only to help you understand the context of the conversation.
 
-Patient Context:
-${JSON.stringify(patientContext, null, 2)}
-  `;
+    Here is the full patient context, including basic info and previous messages:
+
+    ${JSON.stringify(patientContext, null, 2)}
+
+    Please respond according to the system rules.
+    `;
 
     return await this.generateResponse(prompt, systemPrompt, 1024);
   }

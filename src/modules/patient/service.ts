@@ -29,4 +29,12 @@ export class PatientService {
   async getPatientsByDoctor(doctorId: string) {
     return patientRepository.findPatientsByDoctor(doctorId);
   }
+
+  async getPatientDetails(patientId: string, doctorId: string) {
+    const patient = await patientRepository.getPatientDetails(patientId, doctorId);
+    if (!patient) {
+      throw new AppError("Patient not found or access denied", StatusCodes.NOT_FOUND);
+    }
+    return patient;
+  }
 }

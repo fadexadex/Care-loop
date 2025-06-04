@@ -96,6 +96,7 @@ export class AIController {
           const activeFollowUp = patient.followUps[0];
 
           if (activeFollowUp?.completedAt) {
+            console.log("Active follow-up is already completed.");
             if (["help", "support", "urgent"].includes(normalizedMessage)) {
               await aiRepository.createNewFollowUp(
                 patient.id,
@@ -122,7 +123,7 @@ export class AIController {
           } else {
             const previousMessages = await aiRepository.getPatientMessages(
               patient.id,
-              5
+              8
             );
 
             console.log("Previous messages:", previousMessages);
@@ -143,6 +144,8 @@ export class AIController {
               })),
             };
 
+            console.log("Patient context:", patientContext);
+
             const aiResponse = await aiService.generateFollowUpMessage(
               patientContext
             );
@@ -158,7 +161,9 @@ export class AIController {
               status: "SENT",
             });
 
+            console.log(activeFollowUp)
             if (aiResponse.endOfConversation && activeFollowUp?.id) {
+              console.log("I entered end of conversation block");
               await aiRepository.completeFollowUp(activeFollowUp.id);
             }
 
