@@ -1,9 +1,27 @@
 import { Queue, Worker } from "bullmq";
 import dotenv from "dotenv";
 import { prisma } from "./db";
-import { twilioService } from "./twillio.js";
+import { twilioService } from "./twillio";
+import { AIRepository } from "../modules/ai/repository";
 
 dotenv.config();
+
+interface FollowUpData {
+  id: string;
+  visitSummary: string | null;
+  patientId: string;
+  doctorId: string;
+  patient: {
+    name: string;
+    phone: string;
+  };
+  doctor: {
+    name: string;
+    organization: {
+      name: string;
+    } | null;
+  };
+}
 
 const redisConnection = {
   password: process.env.REDIS_PASSWORD || "",
@@ -13,11 +31,13 @@ const redisConnection = {
 
 class FollowUpSchedulerService {
   private followUpQueue: Queue;
+  private aiRepository: AIRepository;
 
   constructor() {
     this.followUpQueue = new Queue("follow-up-messages", {
       connection: redisConnection,
     });
+    this.aiRepository = new AIRepository();
     this.initializeFollowUpWorker();
   }
 
@@ -28,22 +48,36 @@ class FollowUpSchedulerService {
         const { followUpId, patientId, doctorId, scheduledAt } = job.data;
 
         try {
-            const followUp = await prisma.followUp.findUnique({
+          const followUp = await prisma.followUp.findUnique({
             where: { id: followUpId },
-            include: {
-              patient: true,
-              doctor: {
-              include: {
-                organization: true,
+            select: {
+              id: true,
+              visitSummary: true,
+              patientId: true,
+              doctorId: true,
+              patient: {
+                select: {
+                  name: true,
+                  phone: true,
+                },
               },
+              doctor: {
+                select: {
+                  name: true,
+                  organization: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
               },
             },
-            });
-
+          });
           if (!followUp) {
             console.error(`Follow-up with ID ${followUpId} not found`);
             return;
           }
+
           await this.sendFollowUpMessage(followUp);
         } catch (error) {
           console.error("Failed to process follow-up message:", error);
@@ -55,23 +89,48 @@ class FollowUpSchedulerService {
       }
     );
   }
-  private async sendFollowUpMessage(followUp: any) {
+  private async sendFollowUpMessage(followUp: FollowUpData) {
     try {
-      const { patient, doctor: { organization } } = followUp;
-      console.log(
-        `Processing follow-up message for patient: ${patient.firstName} ${patient.lastName}`
-      );
-      console.log(`Follow-up type: ${followUp.type}`);
-      console.log(
-        `Scheduled at: ${new Date(followUp.scheduledAt).toLocaleString()}`
-      );
+      const { patient, doctor } = followUp;
 
-      const message = `Hello ${patient.firstName}! This is a scheduled follow-up message from your healthcare provider. Please contact us if you have any questions.`;
+      if (!patient || !patient.phone) {
+        console.error("Patient phone number is missing");
+        return;
+      }
+      console.log(`Processing follow-up message for patient: ${patient.name}`);
 
-      await twilioService.sendWhatsAppMessage(patient.phoneNumber, message, organization.organizationLine);
+      const firstName = patient.name.split(" ")[0];
+      const organizationName = doctor.organization?.name;
+      const visitReason = followUp.visitSummary;
+
+      const currentHour = new Date().getHours();
+      let greeting;
+
+      if (currentHour >= 5 && currentHour < 12) {
+        greeting = "Good morning";
+      } else if (currentHour >= 12 && currentHour < 17) {
+        greeting = "Good afternoon";
+      } else if (currentHour >= 17 && currentHour < 21) {
+        greeting = "Good evening";
+      } else {
+        greeting = "Hello";
+      }
+
+      const message = `${greeting} ${firstName}, this is your virtual health assistant for Dr. ${doctor.name} from ${organizationName}. Just checking in after your recent visit for ${visitReason}. How are you feeling today?`;
+
+      await this.aiRepository.saveMessage({
+        patientId: followUp.patientId,
+        doctorId: followUp.doctorId,
+        direction: "OUTBOUND",
+        content: message,
+        channel: "WHATSAPP",
+        status: "SENT",
+      });
+
+      await twilioService.sendWhatsAppMessage(patient.phone, message);
 
       console.log(
-        `Successfully sent WhatsApp message to ${patient.phoneNumber}`
+        `Successfully sent WhatsApp message to ${patient.phone} for follow-up ${followUp.id}`
       );
     } catch (error) {
       console.error("Failed to send WhatsApp message:", error);
